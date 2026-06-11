@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABSA Labeling Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --surface3: #2e2e2e;
+  --border: #333;
+  --border2: #444;
+  --text: #f0f0f0;
+  --muted: #888;
+  --muted2: #666;
+  --accent: #e8ff47;
+  --accent-dim: rgba(232,255,71,0.1);
+  --accent-dim2: rgba(232,255,71,0.2);
+  --green: #4ade80;
+  --green-bg: rgba(74,222,128,0.1);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.1);
+  --blue: #60a5fa;
+  --blue-bg: rgba(96,165,250,0.1);
+  --orange: #fb923c;
+  --orange-bg: rgba(251,146,60,0.1);
+  --purple: #c084fc;
+  --purple-bg: rgba(192,132,252,0.1);
+  --font: 'IBM Plex Sans', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+  --radius: 8px;
+  --radius-sm: 5px;
+}
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+.header-logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.header-sub { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.header-divider { width: 1px; height: 24px; background: var(--border); }
+
+.tabs { display: flex; gap: 2px; margin-left: auto; }
+.tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--font);
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+.tab:hover { color: var(--text); background: var(--surface2); }
+.tab.active { background: var(--accent); color: #000; font-weight: 600; border-color: var(--accent); }
+
+.container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+.section { display: none; }
+.section.active { display: block; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.btn {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: var(--font);
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn:hover { border-color: var(--border2); background: var(--surface3); }
+.btn.accent { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+.btn.accent:hover { opacity: 0.88; }
+.btn.success { background: var(--green-bg); color: var(--green); border-color: rgba(74,222,128,0.3); }
+.btn.success:hover { background: rgba(74,222,128,0.2); }
+.btn.danger { background: var(--red-bg); color: var(--red); border-color: rgba(248,113,113,0.3); }
+.btn.danger:hover { background: rgba(248,113,113,0.2); }
+.btn.sm { padding: 4px 10px; font-size: 11px; }
+
+.upload-zone {
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  background: var(--surface);
+  transition: all 0.2s;
+  margin-bottom: 14px;
+}
+.upload-zone:hover { border-color: var(--accent); background: var(--accent-dim); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-icon { font-size: 28px; margin-bottom: 10px; }
+.upload-zone h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.upload-zone p { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+.msg { font-size: 12px; padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 14px; font-family: var(--mono); }
+.msg-info { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,0.2); }
+.msg-success { background: var(--green-bg); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+.msg-warn { background: var(--orange-bg); color: var(--orange); border: 1px solid rgba(251,146,60,0.2); }
+
+.nav-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.counter { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 600; }
+.nav-btns { display: flex; gap: 6px; }
+
+.progress-bar { height: 3px; background: var(--surface3); border-radius: 99px; margin-bottom: 16px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.4s ease; }
+
+.teks-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); letter-spacing: 0.3px; }
+.teks-box {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+  margin-bottom: 12px;
+  user-select: text;
+  cursor: text;
+  min-height: 70px;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.teks-box:focus { outline: none; border-color: var(--accent); }
+
+.aspek-btns { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.aspek-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--font);
+  transition: all 0.15s;
+}
+.aspek-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+.aspek-grid { display: grid; gap: 10px; margin-bottom: 14px; }
+.aspek-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: var(--surface2);
+  transition: border-color 0.2s;
+}
+.aspek-card.has-data { border-color: var(--accent); background: var(--accent-dim); }
+.aspek-card-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.aspek-card.has-data .aspek-card-title { color: var(--accent); }
+.aspek-teks {
+  font-size: 12px;
+  color: var(--muted2);
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 6px 8px;
+  min-height: 34px;
+  margin-bottom: 8px;
+  font-style: italic;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+}
+.aspek-teks.filled { color: var(--text); font-style: normal; border-color: var(--border2); }
+.sentimen-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.sent-btn {
+  flex: 1;
+  min-width: 50px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--font);
+  transition: all 0.12s;
+  text-align: center;
+  white-space: nowrap;
+}
+.sent-btn:hover { border-color: var(--border2); color: var(--text); }
+.sent-btn.active-sent { font-weight: 600; }
+
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
+.stat .n { font-size: 28px; font-weight: 600; color: var(--accent); font-family: var(--mono); }
+.stat .l { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; }
+
+.review-list { max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 14px; background: var(--surface); }
+.review-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); font-size: 12px; cursor: pointer; transition: background 0.1s; }
+.review-item:last-child { border-bottom: none; }
+.review-item:hover { background: var(--surface2); }
+.review-item.current { background: var(--accent-dim); border-left: 2px solid var(--accent); }
+.review-id { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 28px; }
+.review-preview { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; font-family: var(--mono); }
+.badge-done { background: var(--green-bg); color: var(--green); }
+.badge-todo { background: var(--orange-bg); color: var(--orange); }
+.badge-skip { background: var(--surface3); color: var(--muted); }
+
+.action-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hint { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+.manage-section { margin-bottom: 24px; }
+.manage-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.manage-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.manage-subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; min-height: 36px; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  font-size: 12px;
+  color: var(--text);
+  cursor: default;
+}
+.tag .tag-del {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.tag .tag-del:hover { color: var(--red); }
+.tag.accent-tag { border-color: rgba(232,255,71,0.3); background: var(--accent-dim); color: var(--accent); }
+.add-row { display: flex; gap: 8px; }
+.add-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.add-input:focus { border-color: var(--accent); }
+.add-input::placeholder { color: var(--muted2); }
+
+.polarity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+.polarity-name { flex: 1; font-size: 13px; }
+.polarity-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.color-select {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text);
+  font-family: var(--mono);
+  cursor: pointer;
+  outline: none;
+}
+
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.clear-link { font-size: 10px; color: var(--muted2); background: none; border: none; cursor: pointer; font-family: var(--font); padding: 2px 4px; border-radius: 3px; }
+.clear-link:hover { color: var(--red); background: var(--red-bg); }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+input[type=text], input[type=color] { font-family: var(--font); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-logo">ABSA_TOOL</span>
+  <div class="header-divider"></div>
+  <span class="header-sub">Aspect Based Sentiment Analysis · Labeling Tool</span>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('manage')">⚙ Manage</button>
+    <button class="tab" onclick="switchTab('manual')">✏ Labeling</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- TAB MANAGE -->
+  <div id="sec-manage" class="section active">
+    <div class="card">
+      <div class="card-title">Manage Aspect</div>
+      <div style="margin-bottom:6px;">
+        <div class="manage-title">Daftar Aspek</div>
+        <div class="manage-subtitle" style="margin-bottom:12px;">Aspek ini akan muncul sebagai tombol di halaman Labeling</div>
+      </div>
+      <div class="tag-list" id="aspekTagList"></div>
+      <div class="add-row">
+        <input type="text" class="add-input" id="aspekInput" placeholder="Nama aspek baru, misal: harga, fitur, ui..." onkeydown="if(event.key==='Enter') addAspek()">
+        <button class="btn accent" onclick="addAspek()">+ Tambah Aspek</button>
+      </div>
+      <div class="msg msg-info" style="margin-top:12px;margin-bottom:0;">
+        Nama aspek akan otomatis dijadikan lowercase. Minimal 1 aspek diperlukan untuk labeling.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card">
+      <div class="card-title">Manage Polarity</div>
+      <div style="margin-bottom:6px;">
+        <div class="manage-title">Daftar Polarity</div>
+        <div class="manage-subtitle" style="margin-bottom:12px;">Pilihan polaritas yang muncul di setiap aspek saat labeling</div>
+      </div>
+      <div id="polarityList"></div>
+      <div class="add-row" style="margin-top:10px;">
+        <input type="text" class="add-input" id="polarityInput" placeholder="Nama polarity baru, misal: positif, 1, sangat setuju..." onkeydown="if(event.key==='Enter') addPolarity()">
+        <select class="color-select" id="polarityColor">
+          <option value="green">🟢 Hijau</option>
+          <option value="red">🔴 Merah</option>
+          <option value="blue">🔵 Biru</option>
+          <option value="orange">🟠 Oranye</option>
+          <option value="purple">🟣 Ungu</option>
+          <option value="gray">⚪ Abu</option>
+          <option value="yellow">🟡 Kuning</option>
+        </select>
+        <button class="btn accent" onclick="addPolarity()">+ Tambah Polarity</button>
+      </div>
+      <div class="msg msg-warn" style="margin-top:12px;margin-bottom:0;">
+        Mengubah polarity akan mereset label yang sudah dibuat. Atur polarity sebelum mulai labeling.
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB MANUAL -->
+  <div id="sec-manual" class="section">
+    <div id="upload-area">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+        <div class="upload-icon">📂</div>
+        <h3>Upload file Excel dataset kamu</h3>
+        <p>.xlsx / .xls / .csv · kolom: review_id + clean_content</p>
+      </div>
+      <div class="msg msg-info">
+        Pastikan sudah mengatur Aspek dan Polarity di tab <strong>⚙ Manage</strong> sebelum mulai labeling.
+      </div>
+    </div>
+
+    <div id="labeling-area" style="display:none;">
+      <div class="nav-row">
+        <span class="counter" id="counter">0 / 0</span>
+        <div class="nav-btns">
+          <button class="btn" onclick="prevRow()">← Prev</button>
+          <button class="btn" onclick="nextRow()">Next →</button>
+        </div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+
+      <div class="card">
+        <div class="teks-label">→ Blok teks yang ingin di-assign ke aspek, lalu klik tombol aspek</div>
+        <div class="teks-box" id="teksBox" onmouseup="onSelect()"></div>
+        <div class="aspek-btns" id="aspekBtns"></div>
+        <div class="aspek-grid" id="aspekGrid"></div>
+        <div class="action-row">
+          <button class="btn success" onclick="saveRow()">✓ Simpan & lanjut</button>
+          <button class="btn" onclick="skipRow()">Lewati</button>
+          <span class="hint" id="saveHint"></span>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="n" id="statDone">0</div><div class="l">selesai</div></div>
+        <div class="stat"><div class="n" id="statSkip">0</div><div class="l">dilewati</div></div>
+        <div class="stat"><div class="n" id="statLeft">0</div><div class="l">tersisa</div></div>
+      </div>
+
+      <div class="review-list" id="reviewList"></div>
+
+      <button class="btn accent" onclick="downloadJSON()" style="width:100%;padding:12px;font-size:13px;justify-content:center;">
+        ⬇ Download Hasil JSON
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let data = [], current = 0, labels = {}, skipped = new Set();
+let selectedText = '';
+
+let ASPEK_LIST = ['produk', 'layanan', 'pengiriman'];
+
+const POLARITY_COLORS = {
+  green:  { bg: 'rgba(74,222,128,0.15)',  border: 'rgba(74,222,128,0.4)',  text: '#4ade80' },
+  red:    { bg: 'rgba(248,113,113,0.15)', border: 'rgba(248,113,113,0.4)', text: '#f87171' },
+  blue:   { bg: 'rgba(96,165,250,0.15)',  border: 'rgba(96,165,250,0.4)',  text: '#60a5fa' },
+  orange: { bg: 'rgba(251,146,60,0.15)',  border: 'rgba(251,146,60,0.4)',  text: '#fb923c' },
+  purple: { bg: 'rgba(192,132,252,0.15)', border: 'rgba(192,132,252,0.4)', text: '#c084fc' },
+  gray:   { bg: 'rgba(156,163,175,0.15)', border: 'rgba(156,163,175,0.4)', text: '#9ca3af' },
+  yellow: { bg: 'rgba(250,204,21,0.15)',  border: 'rgba(250,204,21,0.4)',  text: '#facc15' },
+};
+
+let POLARITY_LIST = [
+  { name: 'positif', color: 'green' },
+  { name: 'negatif', color: 'red' },
+  { name: 'netral',  color: 'gray' },
+];
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b, i) => b.classList.toggle('active', ['manage','manual'][i] === t));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + t).classList.add('active');
+  if (t === 'manual' && data.length > 0) renderRow();
+}
+
+function renderManage() {
+  const tagList = document.getElementById('aspekTagList');
+  tagList.innerHTML = ASPEK_LIST.map((a, i) => `
+    <span class="tag accent-tag">
+      ${a}
+      <button class="tag-del" onclick="deleteAspek(${i})" title="Hapus aspek">×</button>
+    </span>
+  `).join('');
+
+  const polList = document.getElementById('polarityList');
+  polList.innerHTML = POLARITY_LIST.map((p, i) => {
+    const c = POLARITY_COLORS[p.color] || POLARITY_COLORS.gray;
+    return `
+      <div class="polarity-item" style="border-color:${c.border};">
+        <div class="polarity-color" style="background:${c.text};"></div>
+        <span class="polarity-name" style="color:${c.text};">${p.name}</span>
+        <select class="color-select" onchange="changePolarityColor(${i}, this.value)">
+          ${Object.keys(POLARITY_COLORS).map(k => `<option value="${k}" ${k===p.color?'selected':''}>${k}</option>`).join('')}
+        </select>
+        <button class="btn sm danger" onclick="deletePolarity(${i})">hapus</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function addAspek() {
+  const input = document.getElementById('aspekInput');
+  const val = input.value.trim().toLowerCase();
+  if (!val) return;
+  if (ASPEK_LIST.includes(val)) { alert('Aspek sudah ada!'); return; }
+  ASPEK_LIST.push(val);
+  input.value = '';
+  renderManage();
+}
+
+function deleteAspek(i) {
+  if (ASPEK_LIST.length <= 1) { alert('Minimal 1 aspek harus ada!'); return; }
+  if (!confirm(`Hapus aspek "${ASPEK_LIST[i]}"?`)) return;
+  ASPEK_LIST.splice(i, 1);
+  labels = {}; skipped.clear();
+  renderManage();
+}
+
+function addPolarity() {
+  const input = document.getElementById('polarityInput');
+  const color = document.getElementById('polarityColor').value;
+  const val = input.value.trim().toLowerCase();
+  if (!val) return;
+  if (POLARITY_LIST.find(p => p.name === val)) { alert('Polarity sudah ada!'); return; }
+  POLARITY_LIST.push({ name: val, color });
+  input.value = '';
+  renderManage();
+}
+
+function deletePolarity(i) {
+  if (POLARITY_LIST.length <= 1) { alert('Minimal 1 polarity harus ada!'); return; }
+  if (!confirm(`Hapus polarity "${POLARITY_LIST[i].name}"?`)) return;
+  POLARITY_LIST.splice(i, 1);
+  labels = {}; skipped.clear();
+  renderManage();
+}
+
+function changePolarityColor(i, color) {
+  POLARITY_LIST[i].color = color;
+  renderManage();
+}
+
+document.getElementById('fileInput').onchange = function(e) { loadFile(e.target.files[0]); };
+const uz = document.getElementById('uploadZone');
+uz.ondragover = e => { e.preventDefault(); uz.style.borderColor = 'var(--accent)'; };
+uz.ondragleave = () => { uz.style.borderColor = ''; };
+uz.ondrop = e => { e.preventDefault(); uz.style.borderColor = ''; loadFile(e.dataTransfer.files[0]); };
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (!json.length) { alert('File kosong!'); return; }
+    const cols = Object.keys(json[0]);
+    const colContent = cols.find(c => c === 'clean_content') || cols.find(c => c === 'ulasan') || cols[1];
+    const colId = cols.find(c => c === 'review_id') || cols[0];
+    data = json.map(r => ({ id: r[colId], text: String(r[colContent] || '').trim() })).filter(r => r.text);
+    current = 0; labels = {}; skipped.clear();
+    document.getElementById('upload-area').style.display = 'none';
+    document.getElementById('labeling-area').style.display = 'block';
+    renderRow();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderRow() {
+  if (!data.length) return;
+  const row = data[current];
+  document.getElementById('counter').textContent = `${current + 1} / ${data.length}`;
+  document.getElementById('progFill').style.width = `${((current + 1) / data.length) * 100}%`;
+  document.getElementById('teksBox').textContent = row.text;
+  document.getElementById('saveHint').textContent = '';
+
+  document.getElementById('aspekBtns').innerHTML = ASPEK_LIST.map(a =>
+    `<button class="aspek-btn" onclick="assignAspek('${a}')">+ ${a}</button>`
+  ).join('');
+
+  const cols = Math.min(ASPEK_LIST.length, 3);
+  const grid = document.getElementById('aspekGrid');
+  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+  const existing = labels[row.id] || {};
+  grid.innerHTML = ASPEK_LIST.map(a => {
+    const d = existing[a] || null;
+    const sentiBtns = POLARITY_LIST.map(p => {
+      const c = POLARITY_COLORS[p.color] || POLARITY_COLORS.gray;
+      const isActive = d && d.polarity === p.name;
+      const style = isActive ? `background:${c.bg};color:${c.text};border-color:${c.border};font-weight:600;` : '';
+      return `<button class="sent-btn ${isActive ? 'active-sent' : ''}" style="${style}" onclick="setSentimen('${a}','${p.name}')">${p.name}</button>`;
+    }).join('');
+    const hasFilled = d && d.text;
+    return `
+      <div class="aspek-card ${hasFilled ? 'has-data' : ''}" id="card-${a}">
+        <div class="aspek-card-title">
+          ${a}
+          <button class="clear-link" onclick="clearAspek('${a}')">hapus</button>
+        </div>
+        <div class="aspek-teks ${hasFilled ? 'filled' : ''}" id="text-${a}">${hasFilled ? d.text : 'belum ada teks dipilih'}</div>
+        <div class="sentimen-row" id="sent-row-${a}">${sentiBtns}</div>
+      </div>
+    `;
+  }).join('');
+
+  updateStats();
+  renderReviewList();
+}
+
+function onSelect() {
+  const sel = window.getSelection();
+  if (sel && sel.toString().trim()) selectedText = sel.toString().trim();
+}
+
+function assignAspek(aspek) {
+  if (!selectedText) { document.getElementById('saveHint').textContent = '⚠ Blok teks dulu sebelum assign aspek!'; return; }
+  const row = data[current];
+  if (!labels[row.id]) labels[row.id] = {};
+  if (!labels[row.id][aspek]) labels[row.id][aspek] = { text: '', polarity: null };
+  labels[row.id][aspek].text = selectedText;
+
+  const textEl = document.getElementById('text-' + aspek);
+  const cardEl = document.getElementById('card-' + aspek);
+  if (textEl) { textEl.textContent = selectedText; textEl.classList.add('filled'); }
+  if (cardEl) cardEl.classList.add('has-data');
+  document.getElementById('saveHint').textContent = `✓ "${selectedText.substring(0,30)}${selectedText.length>30?'...':''}" → ${aspek}`;
+  selectedText = '';
+  window.getSelection().removeAllRanges();
+}
+
+function setSentimen(aspek, sentimen) {
+  const row = data[current];
+  if (!labels[row.id]) labels[row.id] = {};
+  if (!labels[row.id][aspek]) labels[row.id][aspek] = { text: '', polarity: null };
+  labels[row.id][aspek].polarity = sentimen;
+
+  const sentRow = document.getElementById('sent-row-' + aspek);
+  if (sentRow) {
+    sentRow.innerHTML = POLARITY_LIST.map(p => {
+      const c = POLARITY_COLORS[p.color] || POLARITY_COLORS.gray;
+      const isActive = p.name === sentimen;
+      const style = isActive ? `background:${c.bg};color:${c.text};border-color:${c.border};font-weight:600;` : '';
+      return `<button class="sent-btn ${isActive?'active-sent':''}" style="${style}" onclick="setSentimen('${aspek}','${p.name}')">${p.name}</button>`;
+    }).join('');
+  }
+}
+
+function clearAspek(aspek) {
+  const row = data[current];
+  if (labels[row.id]) delete labels[row.id][aspek];
+  const textEl = document.getElementById('text-' + aspek);
+  const cardEl = document.getElementById('card-' + aspek);
+  if (textEl) { textEl.textContent = 'belum ada teks dipilih'; textEl.classList.remove('filled'); }
+  if (cardEl) cardEl.classList.remove('has-data');
+  const sentRow = document.getElementById('sent-row-' + aspek);
+  if (sentRow) {
+    sentRow.innerHTML = POLARITY_LIST.map(p =>
+      `<button class="sent-btn" onclick="setSentimen('${aspek}','${p.name}')">${p.name}</button>`
+    ).join('');
+  }
+}
+
+function saveRow() {
+  const row = data[current];
+  const lbl = labels[row.id] || {};
+  const hasAny = ASPEK_LIST.some(a => lbl[a] && lbl[a].text);
+  if (!hasAny) { document.getElementById('saveHint').textContent = '⚠ Minimal assign 1 aspek dulu!'; return; }
+  skipped.delete(row.id);
+  nextRow();
+}
+
+function skipRow() { skipped.add(data[current].id); nextRow(); }
+
+function nextRow() {
+  if (current < data.length - 1) { current++; renderRow(); }
+  else document.getElementById('saveHint').textContent = '✓ Sudah di baris terakhir!';
+}
+
+function prevRow() {
+  if (current > 0) { current--; renderRow(); }
+}
+
+function updateStats() {
+  const done = Object.keys(labels).filter(id => ASPEK_LIST.some(a => labels[id][a] && labels[id][a].text)).length;
+  const skip = skipped.size;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statSkip').textContent = skip;
+  document.getElementById('statLeft').textContent = Math.max(0, data.length - done - skip);
+}
+
+function renderReviewList() {
+  const el = document.getElementById('reviewList');
+  el.innerHTML = data.slice(0, 60).map((r, i) => {
+    const done = labels[r.id] && ASPEK_LIST.some(a => labels[r.id][a] && labels[r.id][a].text);
+    const skip = skipped.has(r.id);
+    const badge = done ? '<span class="badge badge-done">done</span>' :
+                  skip ? '<span class="badge badge-skip">skip</span>' :
+                         '<span class="badge badge-todo">todo</span>';
+    return `<div class="review-item ${i===current?'current':''}" onclick="jumpTo(${i})">
+      <span class="review-id">${r.id}</span>
+      <span class="review-preview">${r.text.substring(0,80)}</span>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function jumpTo(i) { current = i; renderRow(); }
+
+function buildJSONManual() {
+  return data.map(row => {
+    const lbl = labels[row.id] || {};
+    const obj = { clean_content: row.text };
+    ASPEK_LIST.forEach(a => {
+      obj[a] = (lbl[a] && lbl[a].text) ? { text: lbl[a].text, polarity: lbl[a].polarity } : null;
+    });
+    return obj;
+  });
+}
+
+function downloadJSON() {
+  const result = buildJSONManual();
+  const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'absa_labels.json'; a.click();
+}
+
+renderManage();
+</script>
+</body>
+</html>
